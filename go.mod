@@ -3,6 +3,7 @@ module wallet-api-service
 go 1.21.5
 
 require (
+	github.com/confluentinc/confluent-kafka-go/v2 v2.8.0
 	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/pflag v1.0.6
@@ -14,7 +15,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
