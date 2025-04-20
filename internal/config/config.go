@@ -6,15 +6,21 @@ import (
 )
 
 type Config struct {
-	LogLevel          int    `mapstructure:"log_level"`
-	// TelemetryEndpoint string `mapstructure:"telemetry_endpoint"`
-	AppBaseURL        string `mapstructure:"app_base_url"`
-	AppBasePath       string `mapstructure:"app_base_path"`
-	Server            Server `mapstructure:"server"`
+	LogLevel    int    `mapstructure:"log_level"`
+	AppBaseURL  string `mapstructure:"app_base_url"`
+	AppBasePath string `mapstructure:"app_base_path"`
+	Server      Server `mapstructure:"server"`
+	Kafka       Kafka  `mapstructure:"kafka"`
 }
 
 type Server struct {
 	ListenPort int `mapstructure:"listen_port"`
+}
+
+type Kafka struct {
+	Brokers []string `mapstructure:"brokers"`
+	UI      string   `mapstructure:"ui"`
+	Topic   string   `mapstructure:"topic"`
 }
 
 func Load(path string) (*Config, error) {
@@ -71,4 +77,7 @@ func envVars(c *Config) {
 func setDefaults() {
 	viper.SetDefault("log_level", 1)
 	viper.SetDefault("server.listen_port", 8080)
+	viper.SetDefault("kafka.brokers", []string{"localhost:9091", "localhost:9092", "localhost:9093"})
+	viper.SetDefault("kafka.ui", "localhost:9020")
+	viper.SetDefault("kafka.topic", "wallet-topups")
 }

@@ -2,16 +2,22 @@ package kafka
 
 import (
 	// "encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-	// "wallet-api-service/internal/config"
+	"wallet-api-service/internal/config"
 
 	// "wallet-api-service/internal/types"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	// "github.com/google/uuid"
 	// "github.com/rs/zerolog/log"
 )
+
+const(
+	flushTimeout = 5000
+)
+var errUnknownType = errors.New("unknown event type")
 
 type Producer struct {
 	producer *kafka.Producer
@@ -23,11 +29,12 @@ type TopUpEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func NewProducer(address []string) (*Producer, error) {
-	conf := &kafka.ConfigMap{
-		"bootstrap:service": strings.Join(address, ","),
+// func NewProducer(address []string) (*Producer, error) {
+func NewProducer(cnf config.Config) (*Producer, error) {
+	kf_conf := &kafka.ConfigMap{
+		"bootstrap:service": strings.Join(cnf.Kafka.Brokers, ","),
 	}
-	p, err := kafka.NewProducer(conf)
+	p, err := kafka.NewProducer(kf_conf)
 	if err != nil {
 		return nil, fmt.Errorf("error from producer", err)
 	}
@@ -35,41 +42,30 @@ func NewProducer(address []string) (*Producer, error) {
 	return &Producer{producer: p}, nil
 }
 
-// type Client struct {
-// 	cfg *config.Config
-// }
+func (p *Producer) Produce(message, topic string) error {
+	kafkaMsg := &kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Value: []byte(message),
+		Key: nil,
+	}
 
-// func New(cfg config.Config) *Client {
-// 	return &Client{
-// 		cfg: &cfg,
-// 	}
-// }
+	kafkaChan := make(chan kafka.Event)
+	if err := p.producer.Produce(kafkaMsg, kafkaChan); err != nil {
+		return fmt.Errorf("not send message", err)
+	}
 
-// func (c *Client) PublishTopUp(walletID uuid.UUID, amount int) error {
-// 	event := TopUpEvent{
-// 		WalletID:  walletID.String(),
-// 		Amount:    amount,
-// 		Timestamp: time.Now(),
-// 	}
+	e := <-kafkaChan
+	switch ev := e.(type) {
+	case *kafka.Message:
+		return nil
+	case *kafka.Error:
+		return ev
+	default:
+		return errUnknownType
+	}
+}
 
-// 	eventJSON, err := json.Marshal(event)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// В реальной имплементации здесь был бы код для отправки сообщения в Kafka
-// 	// producer.SendMessage(...)
-	
-// 	log.Info().
-// 		Str("wallet_id", walletID.String()).
-// 		Int("amount", amount).
-// 		Msg("Published top-up event to Kafka")
-	
-// 	log.Debug().RawJSON("event", eventJSON).Msg("Raw Kafka event")
-	
-// 	return nil
-// }
-
-// func (c *Client) Close() error {
-// 	return nil
-// }
+func (p *Producer) Close() {
+	p.producer.Flush(flushTimeout)
+	p.producer.Close()
+}

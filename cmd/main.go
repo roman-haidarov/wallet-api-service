@@ -6,8 +6,10 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	// "fmt"
 	"wallet-api-service/internal/config"
 	"wallet-api-service/internal/logger"
+
 	"wallet-api-service/internal/server"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -24,7 +26,11 @@ func main() {
 		log.Fatal().Err(err).Msg("Cannot load config")
 	}
 
+	// fmt.Println(cfg)
+
 	srv, err := server.New(cfg)
+
+	// fmt.Println(srv)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Cannot create server")
 	}
