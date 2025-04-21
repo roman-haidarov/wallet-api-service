@@ -14,14 +14,14 @@ type Server struct {
 	cfg     *config.Config
 	db      db.DB
 	api     *api.API
-	kafka   *kafka.Client
+	kafka   *kafka.Producer
 }
 
 func New(cfg *config.Config) (*Server, error) {
 	s := &Server{cfg: cfg}
 
 	s.db = memdb.New()
-	s.kafka = kafka.New(*s.cfg)
+	s.kafka, _ = kafka.NewProducer(*s.cfg)
 	s.api = api.New(*s.cfg, s.db, s.kafka)
 
 	return s, nil
@@ -39,8 +39,6 @@ func (s *Server) Shutdown(ctx context.Context) {
 	}
 
 	if s.kafka != nil {
-		if err := s.kafka.Close(); err != nil {
-			log.Error().Err(err).Msg("Error closing Kafka connection")
-		}
+		s.kafka.Close()
 	}
 }

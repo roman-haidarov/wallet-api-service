@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	// "fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,18 +12,23 @@ import (
 	"wallet-api-service/internal/db"
 	"wallet-api-service/internal/kafka"
 	"wallet-api-service/internal/types"
+
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+)
+
+const(
+	topic = "my-topic"
 )
 
 type API struct {
 	cfg    config.Config
 	db     db.DB
-	kafka  *kafka.Client
+	kafka  *kafka.Producer
 	server *http.Server
 }
 
-func New(cfg config.Config, database db.DB, kafkaClient *kafka.Client) *API {
+func New(cfg config.Config, database db.DB, kafkaClient *kafka.Producer) *API {
 	return &API{
 		cfg:   cfg,
 		db:    database,
@@ -120,18 +126,15 @@ func (a *API) getWalletHandler(w http.ResponseWriter, r *http.Request, idStr str
 	json.NewEncoder(w).Encode(wallet)
 }
 
-type TopUpRequest struct {
-	Amount int `json:"amount"`
-}
-
 func (a *API) topUpWalletHandler(w http.ResponseWriter, r *http.Request, idStr string) {
 	walletID, err := uuid.Parse(idStr)
+	// _, err := uuid.Parse(idStr)
 	if err != nil {
 		http.Error(w, "Invalid wallet ID", http.StatusBadRequest)
 		return
 	}
 
-	var req TopUpRequest
+	var req types.Wallet
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -142,7 +145,16 @@ func (a *API) topUpWalletHandler(w http.ResponseWriter, r *http.Request, idStr s
 		return
 	}
 
-	if err := a.kafka.PublishTopUp(walletID, req.Amount); err != nil {
+	req.WalletID = walletID
+	jsonData, err := json.Marshal(&req)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal message to JSON")
+		http.Error(w, "Failed to process top-up", http.StatusInternalServerError)
+		return
+	}
+
+	// fmt.Println(req)
+	if err := a.kafka.Produce(string(jsonData), topic); err != nil {
 		log.Error().Err(err).Msg("Failed to publish to Kafka")
 		http.Error(w, "Failed to process top-up", http.StatusInternalServerError)
 		return
